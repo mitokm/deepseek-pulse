@@ -1,0 +1,191 @@
+# DeepSeek Pulse
+
+Dashboard cho tài khoản DeepSeek của bạn, trả lời ba câu hỏi:
+
+1. **Đã dùng bao nhiêu token, lúc nào?** — token theo ngày, theo giờ trong tuần, theo phiên.
+2. **Bao nhiêu phần chi phí rơi vào giờ cao điểm?** — đồng hồ cao điểm/thấp điểm có đếm ngược, timeline 24 giờ, lưới 7 ngày, và số tiền "trả thêm" do chạy trong khung giá gấp đôi.
+3. **Tài khoản còn bao nhiêu tiền, dùng được bao lâu nữa?** — số dư thật lấy từ DeepSeek Platform (nạp tiền + tặng thêm), tốc độ đốt tiền 7 ngày, dự báo số ngày còn lại.
+
+Có hai cách dùng, cùng một mã nguồn:
+
+| Cách | Giao diện | Khi nào dùng |
+| --- | --- | --- |
+| **Plugin DeepSeek Harness** | Panel **Pulse** trong sidebar của app, kèm cảnh báo cao điểm | Dùng hằng ngày — không thêm cổng, không thêm tiến trình |
+| **Server độc lập** | `http://127.0.0.1:4577` | Khi không mở Harness, hoặc để nhúng ở nơi khác |
+
+Không cần API key, không cần đăng nhập lại: dashboard đọc phiên đăng nhập DeepSeek mà **DeepSeek Harness đã lưu sẵn** trên máy.
+
+![DeepSeek Pulse](docs/screenshot.png)
+
+## Dùng như plugin (đã cài sẵn cho profile `desktop`)
+
+Kiểm tra trong **Settings → Plugins** (mục `deepseek-pulse`), hoặc bằng `plugin_manager list_plugins`.
+
+Sau khi cài lần đầu — hoặc sau khi sửa client half — **tải lại cửa sổ Harness một lần** (`Ctrl+R`) để nạp module client.
+
+Plugin gồm hai nửa:
+
+- **Host half** (`lib/plugin-host.mjs`) mount dashboard tại `/pulse` trên chính web server của Harness — dùng lại `public/` và `lib/` của server độc lập, nên chỉ có một bản UI.
+- **Client half** (`lib/client.cjs`) đăng ký ba chỗ:
+  - `main` (key `pulse`): panel nhúng dashboard (cùng origin, không cần cổng riêng);
+  - `sidebar.panellist`: icon **Pulse** để mở panel;
+  - `shell.overlay`: cảnh báo cao điểm luôn chạy, kể cả khi không mở panel.
+
+![Panel Pulse trong sidebar](docs/panel.png)
+
+> Gói được pnpm **copy** vào profile, không symlink. Sau khi sửa code trong repo, đồng bộ lại rồi `Ctrl+R`:
+>
+> ```powershell
+> Copy-Item .\lib\* "$env:USERPROFILE\.dsh\profiles\desktop\node_modules\deepseek-pulse\lib\" -Recurse -Force
+> Copy-Item .\public\* "$env:USERPROFILE\.dsh\profiles\desktop\node_modules\deepseek-pulse\public\" -Recurse -Force
+> ```
+>
+> Thay đổi ở host half chỉ có hiệu lực sau khi khởi động lại Harness (module đã nạp vào bộ nhớ).
+
+Cấu hình plugin nằm ở lớp patch của profile — `~/.dsh/profiles/desktop/cordis.patch.yml`:
+
+```yaml
+- id: deepseek-pulse
+  config:
+    peakWarningMinutes: 15          # cảnh báo trước bao nhiêu phút
+    displayTimeZone: Asia/Ho_Chi_Minh
+    defaultRangeDays: 14
+    # sessionDir: C:\Users\<you>\.dsh\sessions   # tùy chọn
+```
+
+Gỡ cài đặt: `plugin_manager remove_bundle` với `deepseek-pulse`, hoặc tắt trong Settings → Plugins.
+
+### Cài từ GitHub
+
+```powershell
+# trong agent của Harness
+plugin_manager  action=install_bundle  target=github:<user>/deepseek-pulse
+```
+
+hoặc bằng pnpm trong profile:
+
+```powershell
+cd "$env:USERPROFILE\.dsh\profiles\desktop"
+pnpm add "github:<user>/deepseek-pulse"
+```
+
+rồi thêm `deepseek-pulse` vào `dsh.profile.bundles` trong `package.json` của profile và khởi động lại Harness.
+
+## Dock ở góc trái dưới
+
+Ngoài panel đầy đủ, plugin gắn một **thẻ nhỏ luôn hiển thị** ở góc trái dưới cửa sổ (trên thanh Settings), tận dụng khoảng trống cuối sidebar:
+
+```
+● THẤP ĐIỂM
+cao điểm 08:00 · còn 14 giờ 38 phút
+──────────────────────────
+Phiên này              48.95M
+Hôm nay                $0.070
+Số dư                  $10.04
+```
+
+- Bấm vào thẻ → mở panel Pulse đầy đủ.
+- Nút `–` thu gọn thành một viên nhỏ (chỉ còn chấm trạng thái + token phiên); trạng thái nhớ trong `localStorage`.
+- Tự ẩn khi sidebar thu gọn (rail), vì lúc đó không còn chỗ.
+- Dữ liệu: `/pulse/api/peak` mỗi 30 giây, `/pulse/api/overview?days=1` mỗi 60 giây.
+
+## Cảnh báo cao điểm
+
+Overlay kiểm tra mỗi 30 giây. Khi sắp bước vào khung giá gấp đôi (mặc định trước **15 phút**):
+
+- hiện **thẻ cảnh báo** ở góc dưới phải cửa sổ Harness;
+- bắn **thông báo desktop** (`Notification` của Electron/trình duyệt) kèm giờ bắt đầu cao điểm.
+
+Thẻ có hai nút: **Đã hiểu** (im tới lần chuyển khung kế tiếp) và **Tắt 1 giờ**. Mốc tắt lưu trong `localStorage`.
+
+Nếu chưa cấp quyền thông báo, chỉ thẻ trong app hiện ra — bấm biểu tượng ổ khoá trên thanh địa chỉ để cấp quyền.
+
+## Thẻ "Token phiên này"
+
+Thẻ KPI thứ hai hiển thị **phiên đang làm việc** (token, cache đọc/vào/ra, chi phí) thay cho tổng theo kỳ — tổng kỳ vẫn nằm trong tooltip của thẻ.
+
+- Server trả `currentSession`: phiên có hoạt động mới nhất (hoặc phiên chỉ định qua `?session=<id>`).
+- Trước khi plugin host nạp bản mới, UI tự lấy dòng đầu bảng phiên làm phương án dự phòng (đúng số tổng và chi phí, chưa có thanh chia cache/vào/ra).
+
+## Chạy độc lập
+
+```powershell
+cd deepseek-pulse
+node server.mjs          # hoặc nhấp đôi start.cmd
+```
+
+Mở **http://127.0.0.1:4577**. Yêu cầu Node.js ≥ 24 (cần `zlib.zstdDecompressSync`); `start.cmd` tự dùng Node đi kèm DSH nếu Node trên PATH cũ hơn.
+
+## Dữ liệu lấy từ đâu
+
+| Số liệu | Nguồn | Ghi chú |
+| --- | --- | --- |
+| Số dư, tổng chi tiêu | `GET https://platform.deepseek.com/api/v0/users/get_user_summary` | Gửi kèm grant trong `~/.dsh/.credentials.yaml` (`deepseek-account-platform/default`) |
+| Token theo phiên | `~/.dsh/sessions/**/session.v4.jsonl.zstd` | Mỗi `assistant/message` có `usage` thật do API trả về; file là chuỗi nhiều frame zstd nên dashboard tự tách frame |
+| Giá, khung giờ | `config.json` | Chép từ [Models & Pricing](https://api-docs.deepseek.com/quick_start/pricing) |
+
+Chi phí là **ước tính** theo bảng giá công bố; số dư và "tổng chi tiêu" là số liệu thật từ Platform.
+
+## Cách tính khung giá
+
+Theo [tài liệu giá DeepSeek](https://api-docs.deepseek.com/quick_start/pricing):
+
+- **Cao điểm**: 01:00–04:00 và 06:00–10:00 UTC, thứ Hai–thứ Sáu, **trừ ngày lễ Trung Quốc**.
+- **Thấp điểm**: mọi thời điểm còn lại (kể cả cuối tuần và ngày lễ), giá bằng **một nửa** giá cao điểm.
+
+Với `Asia/Ho_Chi_Minh` (UTC+7): **08:00–11:00** và **13:00–17:00** các ngày trong tuần.
+
+| Model | Cache hit (thấp ↔ cao) | Cache miss (thấp ↔ cao) | Output (thấp ↔ cao) |
+| --- | --- | --- | --- |
+| `deepseek-flash` | 0.003 ↔ 0.006 | 0.15 ↔ 0.30 | 0.60 ↔ 1.20 |
+| `deepseek-v4-pro` | 0.022 ↔ 0.044 | 0.66 ↔ 1.32 | 1.98 ↔ 3.96 |
+
+USD / 1M token. Công thức: `(cacheRead × hit + (input + cacheWrite) × miss + output × out) / 1.000.000`.
+"Nếu toàn thấp điểm" = tính lại toàn bộ token ở giá thấp điểm; chênh lệch là khoản trả thêm do giờ cao điểm.
+
+## Cấu hình (`config.json`)
+
+| Khóa | Ý nghĩa |
+| --- | --- |
+| `port`, `host` | Mặc định `4577`, chỉ nghe `127.0.0.1`. Override bằng biến môi trường `PORT`. |
+| `displayTimeZone` | Múi giờ hiển thị (mặc định `Asia/Ho_Chi_Minh`). |
+| `peakWarningMinutes` | Cảnh báo trước bao nhiêu phút khi sắp vào cao điểm. |
+| `peakSchedule.windowsUTC` | Các khung cao điểm theo UTC. |
+| `peakSchedule.holidaysCST` | Ngày lễ Trung Quốc không tính cao điểm. Danh sách 2026 theo [thông báo Quốc vụ viện](https://www.gov.cn/zhengce/content/202511/content_7047090.htm); sang năm cần cập nhật. |
+| `pricing.perMillion` | Bảng giá theo model; `modelAliases` gộp tên cũ (`deepseek-chat`, `deepseek-v4-flash`, …). |
+
+## Quyền riêng tư
+
+- Token đăng nhập chỉ được đọc từ đĩa và gửi tới `platform.deepseek.com` — không trả về trình duyệt, không ghi log.
+- Route `/pulse` không hỏi đăng nhập (giống các route phụ khác của Harness) và chỉ phục vụ trên `127.0.0.1`. Đừng mở Harness ra mạng ngoài nếu không muốn chia sẻ số dư.
+- Server độc lập cũng chỉ nghe `127.0.0.1`.
+
+## Hạn chế đã biết
+
+- Chỉ thấy usage **phát sinh qua DeepSeek Harness**. Gọi API từ công cụ khác (curl, SDK riêng, web chat) không hiện ở đây — chỉ hiện gián tiếp qua số dư giảm.
+- "Tổng chi tiêu (console)" có thể gồm cả giao dịch CNY nên không cộng thẳng với chi phí ước tính.
+- Chi phí ước tính lệch vài phần trăm so với hoá đơn thật (bảng giá đổi, cách quy đổi cache write).
+- Ngày lễ 2026 hard-code; năm sau cần bổ sung.
+- Thông báo desktop cần quyền `Notification`; nếu bị chặn, vẫn còn thẻ cảnh báo trong app.
+
+## Xử lý sự cố
+
+| Hiện tượng | Cách xử lý |
+| --- | --- |
+| Không thấy icon Pulse | Tải lại cửa sổ Harness (`Ctrl+R`); kiểm tra Settings → Plugins có `deepseek-pulse` và đang bật. |
+| Panel trống | Mở thẳng `http://127.0.0.1:19387/pulse/` xem dashboard có lỗi không; xem console của cửa sổ Harness. |
+| Card số dư báo "Chưa tìm thấy phiên đăng nhập" | Đăng nhập DeepSeek trong Harness rồi bấm **Cập nhật**. |
+| Báo "Phiên đăng nhập đã hết hiệu lực" | Đăng xuất/đăng nhập lại trong DSH. |
+| Bảng trống, 0 phiên | Kiểm tra `%USERPROFILE%\.dsh\sessions`; hoặc đặt `DSH_HOME` nếu DSH dùng thư mục khác. |
+| Lỗi `zstd` khi chạy độc lập | Dùng Node ≥ 24 (`start.cmd`). |
+
+## Công cụ dev
+
+`tools/preview.mjs` render bằng Chrome headless qua CDP, chụp ảnh và báo cáo tràn layout + lỗi console:
+
+```powershell
+node tools/preview.mjs 1440 2400 docs/preview.png
+$env:PULSE_URL = "http://127.0.0.1:19387/pulse/?embed=1"; node tools/preview.mjs 1280 1400 docs/panel.png
+```
+
+`tools/` không nằm trong gói plugin (`files` chỉ gồm `lib`, `public`, `config.json`, `cordis.patch.yml`).

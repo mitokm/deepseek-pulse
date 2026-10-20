@@ -1,0 +1,80 @@
+{
+  "port": 4577,
+  "host": "127.0.0.1",
+  "displayTimeZone": "Asia/Ho_Chi_Minh",
+  "defaultRangeDays": 14,
+  "peakWarningMinutes": 15,
+  "balanceTimeoutMs": 15000,
+
+  "peakSchedule": {
+    "note": "Theo https://api-docs.deepseek.com/quick_start/pricing — giờ cao điểm tính bằng UTC, các ngày trong tuần (T2–T6), trừ ngày lễ Trung Quốc. Mọi khung giờ khác là thấp điểm.",
+    "windowsUTC": [
+      { "start": 1, "end": 4 },
+      { "start": 6, "end": 10 }
+    ],
+    "weekdaysUTC": [1, 2, 3, 4, 5],
+    "excludeHolidays": true,
+    "holidaysCST": [
+      "2026-01-01",
+      "2026-01-02",
+      "2026-01-03",
+      "2026-02-15",
+      "2026-02-16",
+      "2026-02-17",
+      "2026-02-18",
+      "2026-02-19",
+      "2026-02-20",
+      "2026-02-21",
+      "2026-02-22",
+      "2026-02-23",
+      "2026-04-04",
+      "2026-04-05",
+      "2026-04-06",
+      "2026-05-01",
+      "2026-05-02",
+      "2026-05-03",
+      "2026-05-04",
+      "2026-05-05",
+      "2026-06-19",
+      "2026-06-20",
+      "2026-06-21",
+      "2026-09-25",
+      "2026-09-26",
+      "2026-09-27",
+      "2026-10-01",
+      "2026-10-02",
+      "2026-10-03",
+      "2026-10-04",
+      "2026-10-05",
+      "2026-10-06",
+      "2026-10-07"
+    ]
+  },
+
+  "pricing": {
+    "currency": "USD",
+    "unit": 1000000,
+    "fallbackModel": "deepseek-flash",
+    "source": "https://api-docs.deepseek.com/quick_start/pricing (per 1M tokens, USD)",
+    "modelAliases": {
+      "deepseek-v4-flash": "deepseek-flash",
+      "deepseek-v4-flash-vision-exp": "deepseek-flash",
+      "deepseek-chat": "deepseek-flash",
+      "deepseek-reasoner": "deepseek-flash"
+    },
+    "perMillion": {
+      "deepseek-flash": {
+        "label": "DeepSeek-V4.1-Flash",
+        "cacheHit": { "offPeak": 0.003, "peak": 0.006 },
+        "cacheMiss": { "offPeak": 0.15, "peak": 0.3 },
+        "output": { "offPeak": 0.6, "peak": 1.2 }
+      },
+      "deepseek-v4-pro": {
+        "label": "DeepSeek-V4-Pro",
+        "cacheHit": { "offPeak": 0.022, "peak": 0.044 },
+        "cacheMiss": { "offPeak": 0.66, "peak": 1.32 },
+        "output": { "offPeak": 1.98, "peak": 3.96 }
+      }
+    }
+  }
+}

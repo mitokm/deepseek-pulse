@@ -1,0 +1,15 @@
+# Bundle patch for @deepseek-ai/dsh: inserts the DeepSeek Pulse Host entry.
+#
+# Override any value from your own profile patch layer instead of editing this
+# file, e.g. ~/.dsh/profiles/<profile>/cordis.patch.yml:
+#
+#   - id: deepseek-pulse
+#     config:
+#       peakWarningMinutes: 30
+#
+- insert:
+    - id: deepseek-pulse
+      # Must match the published package name — the loader imports the specifier.
+      name: "deepseek-pulse"
+      config:
+        peakWarningMinutes: 15

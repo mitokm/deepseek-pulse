@@ -1,0 +1,44 @@
+{
+  "name": "deepseek-pulse",
+  "version": "1.0.1",
+  "type": "module",
+  "description": "Dashboard token / giá cao điểm / số dư DeepSeek — plugin DeepSeek Harness, kèm server độc lập.",
+  "license": "MIT",
+  "keywords": [
+    "deepseek",
+    "deepseek-harness",
+    "dsh-plugin",
+    "dashboard",
+    "token-usage",
+    "pricing",
+    "balance"
+  ],
+  "main": "lib/plugin-host.mjs",
+  "exports": {
+    ".": "./lib/plugin-host.mjs",
+    "./client": "./lib/client.cjs",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  },
+  "files": [
+    "lib",
+    "public",
+    "config.json",
+    "cordis.patch.yml",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}
