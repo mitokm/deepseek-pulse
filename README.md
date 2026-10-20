@@ -15,6 +15,26 @@ Có hai cách dùng, cùng một mã nguồn:
 
 Không cần API key, không cần đăng nhập lại: dashboard đọc phiên đăng nhập DeepSeek mà **DeepSeek Harness đã lưu sẵn** trên máy.
 
+## Cài đặt trên máy khác
+
+> Hướng dẫn đầy đủ từng bước: **[INSTALL.md](INSTALL.md)** (tiếng Việt, có xử lý sự cố).
+
+**Cách nhanh nhất** — cài như plugin Harness, trong một phiên agent:
+
+```
+plugin_manager  action=install_bundle  target=github:mitokm/deepseek-pulse
+```
+
+Sau đó **thoát hẳn và mở lại Harness**, rồi `Ctrl+R` để nạp giao diện. Kết quả: mục **Pulse** ở sidebar + dock nhỏ ở góc trái dưới.
+
+**Hoặc chạy độc lập** (không cần Harness, chỉ cần Node ≥ 24):
+
+```bash
+git clone https://github.com/mitokm/deepseek-pulse.git
+cd deepseek-pulse
+node server.mjs        # mở http://127.0.0.1:4577
+```
+
 ![DeepSeek Pulse](docs/screenshot.png)
 
 ## Dùng như plugin (đã cài sẵn cho profile `desktop`)

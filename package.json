@@ -4,6 +4,14 @@
   "type": "module",
   "description": "Dashboard token / giá cao điểm / số dư DeepSeek — plugin DeepSeek Harness, kèm server độc lập.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mitokm/deepseek-pulse.git"
+  },
+  "homepage": "https://github.com/mitokm/deepseek-pulse#readme",
+  "bugs": {
+    "url": "https://github.com/mitokm/deepseek-pulse/issues"
+  },
   "keywords": [
     "deepseek",
     "deepseek-harness",
