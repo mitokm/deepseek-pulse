@@ -930,6 +930,15 @@ document.addEventListener('click', (event) => {
   if (event.target.closest('[data-action="test-balance-alert"]')) {
     requestNotificationPermission();
     const hint = document.querySelector('[data-alert-hint]');
+    // Inside the Harness panel the corner card lives in the host page, so ask it
+    // to show the sample card as well as firing the operating-system one.
+    if (EMBEDDED) {
+      try {
+        window.parent.postMessage({ type: 'pulse:test-alert', step: readBalanceStep() }, '*');
+      } catch {
+        /* parent unavailable */
+      }
+    }
     window.setTimeout(() => {
       const step = readBalanceStep();
       const total = state.data?.balance?.total ?? 0;
