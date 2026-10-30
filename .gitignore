@@ -1,3 +1,11 @@
 .preview/
 node_modules/
 *.log
+
+# Local secrets / runtime state — never commit these
+.credentials*
+.env
+.env.*
+*.pem
+pulse-alert.json
+pulse-alert-state.json

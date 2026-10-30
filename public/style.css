@@ -193,6 +193,25 @@ body {
 .mini-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 12.5px; color: var(--muted); }
 .mini-row b { color: var(--text); font-variant-numeric: tabular-nums; font-weight: 600; }
 
+/* ngưỡng cảnh báo số dư */
+.alert-setting { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+.step-input { display: inline-flex; align-items: center; gap: 4px; }
+.step-input input {
+  width: 62px; padding: 2px 6px; border-radius: 6px;
+  border: 1px solid var(--line-strong); background: rgba(148, 163, 184, 0.08);
+  color: var(--text); font: inherit; font-size: 12px; text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.step-input input:focus { outline: none; border-color: rgba(77, 107, 254, 0.75); }
+.step-input .unit { font-size: 11px; color: var(--muted); }
+.alert-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 7px; }
+.alert-actions button {
+  border: 1px solid var(--line-strong); background: transparent; color: var(--muted);
+  font: inherit; font-size: 11px; padding: 3px 8px; border-radius: 6px; cursor: pointer;
+}
+.alert-actions button:hover { color: var(--text); border-color: rgba(77, 107, 254, 0.5); }
+.alert-hint { font-size: 10.5px; color: var(--faint); }
+
 /* ------------------------------------------------------------ peak clock */
 
 .peak-headline { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }

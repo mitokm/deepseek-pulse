@@ -114,6 +114,87 @@ function maybeNotifyPeak(data) {
   }
 }
 
+/* ------------------------------------------------- balance drop notifications */
+
+const BALANCE_STEP_KEY = 'pulse.balance.step';
+const BALANCE_BASE_KEY = 'pulse.balance.baseline';
+const BALANCE_MIN_STEP = 0.1;
+const BALANCE_DEFAULT_STEP = 1;
+
+function clampBalanceStep(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return BALANCE_DEFAULT_STEP;
+  return Math.max(BALANCE_MIN_STEP, Math.round(parsed * 100) / 100);
+}
+
+function readBalanceStep() {
+  try {
+    const raw = window.localStorage.getItem(BALANCE_STEP_KEY);
+    return raw === null ? BALANCE_DEFAULT_STEP : clampBalanceStep(raw);
+  } catch {
+    return BALANCE_DEFAULT_STEP;
+  }
+}
+
+function saveBalanceStep(value) {
+  try {
+    window.localStorage.setItem(BALANCE_STEP_KEY, String(clampBalanceStep(value)));
+  } catch {
+    /* storage may be unavailable */
+  }
+}
+
+function readBalanceBaseline() {
+  try {
+    const raw = Number(window.localStorage.getItem(BALANCE_BASE_KEY));
+    return Number.isFinite(raw) && raw > 0 ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeBalanceBaseline(value) {
+  try {
+    window.localStorage.setItem(BALANCE_BASE_KEY, String(Math.round(value * 1e6) / 1e6));
+  } catch {
+    /* storage may be unavailable */
+  }
+}
+
+/** Fire one OS notification; returns false when notifications are not allowed. */
+function fireBalanceNotification(drop, total, step) {
+  try {
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return false;
+    new Notification(`Số dư giảm $${drop.toFixed(2)}`, {
+      body: `Còn $${total.toFixed(2)} · ngưỡng báo $${step.toFixed(2)}`,
+      tag: 'deepseek-pulse-balance',
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** One notification per configured step the balance falls below the baseline. */
+function maybeNotifyBalanceDrop(balance) {
+  if (EMBEDDED) return;
+  if (!balance?.connected || !Number.isFinite(balance.total)) return;
+  const step = readBalanceStep();
+  const baseline = readBalanceBaseline();
+  if (baseline === null) {
+    writeBalanceBaseline(balance.total);
+    return;
+  }
+  const drop = baseline - balance.total;
+  if (drop <= 0) {
+    if (drop < -0.005) writeBalanceBaseline(balance.total); // topped up: rebase silently
+    return;
+  }
+  if (drop < step) return;
+  writeBalanceBaseline(balance.total);
+  fireBalanceNotification(drop, balance.total, step);
+}
+
 /* ------------------------------------------------------------------ fetch */
 
 async function load({ force = false } = {}) {
@@ -134,6 +215,7 @@ async function load({ force = false } = {}) {
     state.data = await response.json();
     state.error = null;
     buildFormatters(state.data.timezone.name);
+    maybeNotifyBalanceDrop(state.data.balance);
   } catch (error) {
     state.error = String(error?.message ?? error);
   } finally {
@@ -367,6 +449,20 @@ function renderBalance(data) {
         <div class="mini-row"><span>Hôm nay · token</span><b>${today ? tokens(today.totalTokens) : '—'}</b></div>
         <div class="mini-row"><span>Hôm nay · chi phí</span><b>${today ? money(today.cost) : '—'}</b></div>
         ${priceRow ? `<div class="mini-row"><span>Giá 1M ra (thấp↔cao)</span><b>$${priceRow.output.offPeak} ↔ $${priceRow.output.peak}</b></div>` : ''}
+      </div>
+
+      <div class="alert-setting">
+        <div class="mini-row">
+          <span>Báo khi số dư giảm</span>
+          <span class="step-input">
+            <input type="number" data-balance-step min="0.1" step="0.1" value="${readBalanceStep().toFixed(2)}" aria-label="Ngưỡng báo số dư, USD" />
+            <span class="unit">$</span>
+          </span>
+        </div>
+        <div class="alert-actions">
+          <button type="button" data-action="test-balance-alert">Thử thông báo</button>
+          <span class="alert-hint" data-alert-hint>tối thiểu $0.10</span>
+        </div>
       </div>
     </section>`;
 }
@@ -701,6 +797,15 @@ function renderFooter(data) {
 /* ----------------------------------------------------------------- render */
 
 function render() {
+  // Keep the threshold input usable while it is focused; the next render
+  // (after focus leaves) shows the refreshed numbers.
+  const active = document.activeElement;
+  if (active && active.matches && active.matches('[data-balance-step]')) {
+    state.deferredRender = true;
+    return;
+  }
+  state.deferredRender = false;
+
   const data = state.data;
   const compact = isCompact();
   const body = !data
@@ -771,7 +876,36 @@ document.addEventListener('click', (event) => {
     load();
     return;
   }
-  if (event.target.closest('[data-action="refresh"]')) load({ force: true });
+  if (event.target.closest('[data-action="refresh"]')) {
+    load({ force: true });
+    return;
+  }
+  if (event.target.closest('[data-action="test-balance-alert"]')) {
+    requestNotificationPermission();
+    const hint = document.querySelector('[data-alert-hint]');
+    window.setTimeout(() => {
+      const step = readBalanceStep();
+      const total = state.data?.balance?.total ?? 0;
+      const sent = fireBalanceNotification(step, total, step);
+      if (hint) {
+        hint.textContent = sent ? 'đã gửi thử' : 'trình duyệt chưa cho phép';
+        hint.title = sent ? '' : 'Bấm ổ khoá trên thanh địa chỉ → Notifications → Allow';
+      }
+    }, 500);
+  }
+});
+
+document.addEventListener('change', (event) => {
+  const input = event.target.closest('[data-balance-step]');
+  if (!input) return;
+  const value = clampBalanceStep(input.value);
+  input.value = value.toFixed(2);
+  saveBalanceStep(value);
+});
+
+document.addEventListener('focusout', (event) => {
+  if (!event.target.closest?.('[data-balance-step]')) return;
+  if (state.deferredRender) render();
 });
 
 setInterval(tick, 1000);

@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "to": "ban@example.com",
+  "from": "ban@gmail.com",
+  "dropAmount": 1,
+  "checkMinutes": 5,
+  "smtp": {
+    "host": "smtp.gmail.com",
+    "port": 465,
+    "secure": true,
+    "user": "ban@gmail.com",
+    "pass": "mat-khau-ung-dung-16-ky-tu"
+  }
+}

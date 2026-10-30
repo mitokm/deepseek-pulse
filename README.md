@@ -109,6 +109,29 @@ Số dư                  $10.04
 - Tự ẩn khi sidebar thu gọn (rail), vì lúc đó không còn chỗ.
 - Dữ liệu: `/pulse/api/peak` mỗi 30 giây, `/pulse/api/overview?days=1` mỗi 60 giây.
 
+## Cảnh báo khi số dư giảm
+
+Mỗi khi số dư tụt đủ **một mức** (mặc định **$1.00**, chỉnh được từ **$0.10**), dashboard bắn một thông báo desktop:
+
+```
+Số dư giảm $1.02
+Còn $10.04 · ngưỡng báo $1.00
+```
+
+Đổi mức ngay trong thẻ **Số dư DeepSeek** → ô *"Báo khi số dư giảm"* (nhập số, tối thiểu 0.10). Giá trị lưu trong `localStorage`, dùng chung cho panel và dock.
+
+Cách hoạt động:
+
+- Mẫu số dư được so với **mốc** đã lưu; chênh lệch ≥ mức báo thì thông báo và dời mốc. Giảm lẻ tẻ (0.3 + 0.3 + 0.5) cộng dồn tới mức mới báo, tránh spam.
+- Nạp thêm tiền (số dư tăng) → tự dời mốc, im lặng.
+- Nút **Thử thông báo** để kiểm tra quyền và cách hiển thị.
+- Dock hiện thêm dòng `−$1.02 · còn $10.04` trong 20 giây sau mỗi lần báo.
+
+Lưu ý:
+
+- Thông báo chạy khi cửa sổ Harness (hoặc tab dashboard) đang mở — dữ liệu số dư được lấy mỗi 60 giây.
+- Cần quyền `Notification`; nếu chưa cấp, nút *Thử thông báo* sẽ báo "trình duyệt chưa cho phép".
+
 ## Cảnh báo cao điểm
 
 Overlay kiểm tra mỗi 30 giây. Khi sắp bước vào khung giá gấp đôi (mặc định trước **15 phút**):
@@ -119,6 +142,58 @@ Overlay kiểm tra mỗi 30 giây. Khi sắp bước vào khung giá gấp đôi
 Thẻ có hai nút: **Đã hiểu** (im tới lần chuyển khung kế tiếp) và **Tắt 1 giờ**. Mốc tắt lưu trong `localStorage`.
 
 Nếu chưa cấp quyền thông báo, chỉ thẻ trong app hiện ra — bấm biểu tượng ổ khoá trên thanh địa chỉ để cấp quyền.
+
+## Cảnh báo số dư qua email
+
+Ngoài cảnh báo cao điểm, Pulse có thể gửi **email** mỗi khi số dư DeepSeek giảm đủ một ngưỡng — mặc định **$1**, và **chỉ một email cho mỗi lần giảm** (không lặp lại ở các vòng kiểm tra sau).
+
+Tạo `~/.dsh/pulse-alert.json` (xem mẫu `pulse-alert.example.json`):
+
+```json
+{
+  "enabled": true,
+  "to": "ban@example.com",
+  "from": "ban@gmail.com",
+  "dropAmount": 1,
+  "checkMinutes": 5,
+  "smtp": {
+    "host": "smtp.gmail.com",
+    "port": 465,
+    "secure": true,
+    "user": "ban@gmail.com",
+    "pass": "mat-khau-ung-dung"
+  }
+}
+```
+
+| Khóa | Ý nghĩa |
+| --- | --- |
+| `enabled` | Bật/tắt cảnh báo |
+| `to` | Email nhận cảnh báo |
+| `from` | Địa chỉ gửi (mặc định bằng `smtp.user`) |
+| `dropAmount` | Ngưỡng giảm, USD (mặc định `1`) |
+| `checkMinutes` | Bao lâu kiểm tra số dư một lần (mặc định `5`, tối thiểu `1`) |
+| `smtp.host` / `port` / `secure` | Máy chủ SMTP: `465` + `secure: true` (TLS ngầm) hoặc `587` + `secure: false` (STARTTLS) |
+| `smtp.user` / `pass` | Tài khoản gửi. Gmail cần **mật khẩu ứng dụng** 16 ký tự (bật 2FA → App passwords), không phải mật khẩu đăng nhập |
+
+Máy chủ thường dùng: **Gmail** `smtp.gmail.com:465` · **Yahoo** `smtp.mail.yahoo.com:465` · **Outlook** `smtp-mail.outlook.com:587` (`secure: false`). Cả Gmail và Yahoo đều yêu cầu *app password* (Yahoo: Account Security → bật 2-step verification → Generate app password), không nhận mật khẩu đăng nhập thường.
+
+Cách hoạt động:
+
+- Lần chạy đầu lấy số dư hiện tại làm **mốc** và chưa gửi gì.
+- Khi số dư giảm ≥ `dropAmount` so với mốc: gửi **một** email, rồi đặt mốc bằng số dư mới → mỗi $1 chỉ một email.
+- Nạp tiền: mốc tự nâng lên, không gửi cảnh báo.
+- Mốc và lần gửi gần nhất lưu ở `~/.dsh/pulse-alert-state.json`, nên khởi động lại Harness không gửi lại email cũ.
+- Chỉ chạy khi Harness đang mở; mật khẩu không bị ghi ra log.
+
+Gửi thử ngay (không cần khởi động lại Harness):
+
+```powershell
+node tools/test-alert.mjs --dry-run   # xem cấu hình đã đọc đúng chưa
+node tools/test-alert.mjs             # gửi một email thử
+```
+
+Kiểm tra trạng thái: `GET /pulse/api/alerts`. Kích hoạt kiểm tra ngay: `POST /pulse/api/alerts/check`.
 
 ## Thẻ "Token phiên này"
 
