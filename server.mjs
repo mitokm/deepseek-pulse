@@ -6,11 +6,31 @@ import { fileURLToPath } from 'node:url';
 import { loadConfig } from './lib/config.mjs';
 import { createPricing } from './lib/pricing.mjs';
 import { createHttpApp } from './lib/http-app.mjs';
+import { loadAlertConfig, updateAlertConfig } from './lib/alerts.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const config = loadConfig(join(root, 'config.json'));
 const pricing = createPricing(config);
-const app = createHttpApp({ config, pricing, publicDir: join(root, 'public') });
+const app = createHttpApp({
+  config,
+  pricing,
+  publicDir: join(root, 'public'),
+  // The standalone entry never runs the mail watcher (the Harness host owns it);
+  // it still reads and writes the shared threshold so the UI stays consistent.
+  alerts: () => {
+    const { config: alertConfig } = loadAlertConfig(config.dshHome);
+    return {
+      enabled: false,
+      configured: Boolean(alertConfig?.to && alertConfig?.smtp?.host),
+      dropAmount: alertConfig?.dropAmount ?? 1,
+      source: 'standalone',
+    };
+  },
+  configureAlerts: async (patch) => {
+    const { config: next } = updateAlertConfig(config.dshHome, { dropAmount: patch?.dropAmount });
+    return { enabled: false, configured: false, dropAmount: next.dropAmount, source: 'standalone' };
+  },
+});
 
 const server = createServer((request, response) => {
   const url = new URL(request.url ?? '/', `http://${request.headers.host ?? 'localhost'}`);

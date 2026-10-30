@@ -211,6 +211,8 @@ body {
 }
 .alert-actions button:hover { color: var(--text); border-color: rgba(77, 107, 254, 0.5); }
 .alert-hint { font-size: 10.5px; color: var(--faint); }
+.alert-hint[data-state='ok'] { color: var(--off); }
+.alert-hint[data-state='warn'] { color: var(--peak); }
 
 /* ------------------------------------------------------------ peak clock */
 

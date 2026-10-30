@@ -118,7 +118,12 @@ Số dư giảm $1.02
 Còn $10.04 · ngưỡng báo $1.00
 ```
 
-Đổi mức ngay trong thẻ **Số dư DeepSeek** → ô *"Báo khi số dư giảm"* (nhập số, tối thiểu 0.10). Giá trị lưu trong `localStorage`, dùng chung cho panel và dock.
+Đổi mức ngay trong thẻ **Số dư DeepSeek** → ô *"Báo khi số dư giảm"* (nhập số, tối thiểu 0.10). Một ngưỡng dùng chung cho **cả hai kênh**:
+
+- **thông báo desktop** (panel + dock, lấy từ `/api/alerts`);
+- **email** — host kiểm tra mỗi `checkMinutes` và gửi qua SMTP.
+
+Giá trị được ghi vào `~/.dsh/pulse-alert.json` (`dropAmount`) nên email và desktop luôn cùng ngưỡng; `localStorage` chỉ giữ bản sao để dock báo ngay trước khi host đọc lại file.
 
 Cách hoạt động:
 
@@ -127,10 +132,13 @@ Cách hoạt động:
 - Nút **Thử thông báo** để kiểm tra quyền và cách hiển thị.
 - Dock hiện thêm dòng `−$1.02 · còn $10.04` trong 20 giây sau mỗi lần báo.
 
+Cấu hình email nằm ở `~/.dsh/pulse-alert.json` (mẫu: `pulse-alert.example.json`): `to`, `smtp.host/port/user/pass`, `checkMinutes`. Trạng thái (mốc + lần gửi cuối) ở `~/.dsh/pulse-alert-state.json`.
+
 Lưu ý:
 
-- Thông báo chạy khi cửa sổ Harness (hoặc tab dashboard) đang mở — dữ liệu số dư được lấy mỗi 60 giây.
+- Thông báo desktop chạy khi cửa sổ Harness (hoặc tab dashboard) đang mở — số dư lấy mỗi 60 giây.
 - Cần quyền `Notification`; nếu chưa cấp, nút *Thử thông báo* sẽ báo "trình duyệt chưa cho phép".
+- Đổi ngưỡng từ dashboard cần host đã nạp bản có `POST /api/alerts/config`; bản host cũ vẫn nhận giá trị qua `localStorage` nhưng email giữ ngưỡng trong file. Khởi động lại Harness một lần sau khi cập nhật.
 
 ## Cảnh báo cao điểm
 

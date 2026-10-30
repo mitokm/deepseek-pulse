@@ -197,6 +197,17 @@ function maybeNotifyBalanceDrop(balance) {
 
 /* ------------------------------------------------------------------ fetch */
 
+/** Current email-alert status from the host; null when the endpoint is absent. */
+async function fetchAlerts() {
+  try {
+    const response = await fetch('api/alerts', { headers: { accept: 'application/json' } });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
 async function load({ force = false } = {}) {
   if (state.busy) return;
   state.busy = true;
@@ -215,6 +226,7 @@ async function load({ force = false } = {}) {
     state.data = await response.json();
     state.error = null;
     buildFormatters(state.data.timezone.name);
+    state.alerts = await fetchAlerts();
     maybeNotifyBalanceDrop(state.data.balance);
   } catch (error) {
     state.error = String(error?.message ?? error);
@@ -420,6 +432,12 @@ function renderBalance(data) {
   const priceRow =
     data.pricing.models.find((row) => row.model === topModel) ?? data.pricing.models[0] ?? null;
 
+  // The host keeps the alert threshold in pulse-alert.json (shared with email);
+  // localStorage mirrors it so the dock can notify before the next host reload.
+  const serverStep = Number(state.alerts?.dropAmount);
+  const stepValue = (Number.isFinite(serverStep) && serverStep > 0 ? serverStep : readBalanceStep()).toFixed(2);
+  const alertsHint = state.alerts?.configured ? 'email đang bật' : 'tối thiểu $0.10';
+
   return `
     <section class="card span-4">
       <div class="card-head">
@@ -455,13 +473,13 @@ function renderBalance(data) {
         <div class="mini-row">
           <span>Báo khi số dư giảm</span>
           <span class="step-input">
-            <input type="number" data-balance-step min="0.1" step="0.1" value="${readBalanceStep().toFixed(2)}" aria-label="Ngưỡng báo số dư, USD" />
+            <input type="number" data-balance-step min="0.1" step="0.1" value="${stepValue}" aria-label="Ngưỡng báo số dư, USD" />
             <span class="unit">$</span>
           </span>
         </div>
         <div class="alert-actions">
           <button type="button" data-action="test-balance-alert">Thử thông báo</button>
-          <span class="alert-hint" data-alert-hint>tối thiểu $0.10</span>
+          <span class="alert-hint" data-alert-hint>${esc(alertsHint)}</span>
         </div>
       </div>
     </section>`;
@@ -895,12 +913,39 @@ document.addEventListener('click', (event) => {
   }
 });
 
-document.addEventListener('change', (event) => {
+document.addEventListener('change', async (event) => {
   const input = event.target.closest('[data-balance-step]');
   if (!input) return;
   const value = clampBalanceStep(input.value);
   input.value = value.toFixed(2);
   saveBalanceStep(value);
+
+  const hint = document.querySelector('[data-alert-hint]');
+  const setHint = (text, state) => {
+    if (!hint) return;
+    hint.textContent = text;
+    hint.dataset.state = state ?? '';
+  };
+
+  try {
+    const response = await fetch('api/alerts/config', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ dropAmount: value }),
+    });
+    if (response.ok) {
+      const payload = await response.json();
+      state.alerts = { ...(state.alerts ?? {}), ...(payload.status ?? {}) };
+      setHint('đã lưu · email dùng chung ngưỡng', 'ok');
+    } else if (response.status === 404) {
+      setHint('đã lưu cho dashboard', 'warn');
+    } else {
+      const payload = await response.json().catch(() => null);
+      setHint(payload?.message ?? 'không lưu được', 'warn');
+    }
+  } catch {
+    setHint('không lưu được cấu hình', 'warn');
+  }
 });
 
 document.addEventListener('focusout', (event) => {
