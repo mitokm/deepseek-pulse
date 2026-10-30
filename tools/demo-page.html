@@ -1,0 +1,69 @@
+<!doctype html>
+<!--
+  Screenshot page for docs/ — never shipped to users.
+
+  Usage:
+    Copy-Item .\tools\demo-page.html .\public\_demo.html
+    $env:PULSE_URL = "http://127.0.0.1:4577/_demo.html"
+    $env:CLIP = "0,0,1440,1520"; node tools/preview.mjs 1440 900 docs/screenshot.png
+    Remove-Item .\public\_demo.html
+
+  It fetches real data (so the charts look natural) and then replaces the
+  account fields — balance, spend, session titles — with sample values, so a
+  screenshot can never leak a real balance or the user's session names.
+-->
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>DeepSeek Pulse — ảnh minh hoạ (dữ liệu mẫu)</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="app" id="app">
+      <div class="empty">Đang tải dữ liệu…</div>
+    </main>
+    <noscript>Bảng điều khiển này cần JavaScript để vẽ biểu đồ.</noscript>
+    <script>
+      (() => {
+        const realFetch = window.fetch.bind(window);
+        const sample = { total: 40, top: 30, bonus: 10, lifetime: 18, daily: 0.12, runway: 333 };
+        window.fetch = async (input, init) => {
+          const url = typeof input === 'string' ? input : (input && input.url) || '';
+          if (url.includes('api/alerts') && !url.includes('api/overview')) {
+            return new Response(
+              JSON.stringify({ enabled: true, configured: true, dropAmount: 1, source: 'demo' }),
+              { status: 200, headers: { 'content-type': 'application/json' } },
+            );
+          }
+          const response = await realFetch(input, init);
+          if (!url.includes('api/overview') || !response.ok) return response;
+          const data = await response.json();
+          data.balance = {
+            ...(data.balance || {}),
+            connected: true,
+            currency: 'USD',
+            total: sample.total,
+            toppedUp: sample.top,
+            bonus: sample.bonus,
+            toppedUpWallets: [{ currency: 'USD', amount: sample.top }],
+            bonusWallets: [{ currency: 'USD', amount: sample.bonus }],
+            lifetimeCost: [{ currency: 'USD', amount: sample.lifetime }],
+          };
+          if (data.currentSession) data.currentSession.title = 'Phiên làm việc mẫu';
+          if (Array.isArray(data.sessions)) {
+            data.sessions = data.sessions.map((session, index) => ({ ...session, title: `Phiên mẫu ${index + 1}` }));
+          }
+          data.burn = { ...(data.burn || {}), dailyCost: sample.daily, runwayDays: sample.runway };
+          return new Response(JSON.stringify(data), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          });
+        };
+      })();
+    </script>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

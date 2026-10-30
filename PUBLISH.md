@@ -82,5 +82,5 @@ Cập nhật về sau: commit + push, người dùng chạy lại `install_bundl
 - [ ] Đã điền tên trong `LICENSE`
 - [ ] `package.json` không còn `private: true` (đã bỏ sẵn)
 - [ ] Không có đường dẫn tuyệt đối của riêng bạn trong README/`config.json`
-- [ ] `docs/*.png` là ảnh bạn muốn công khai (có tên phiên làm việc trong bảng — cân nhắc che nếu cần)
+- [ ] `docs/*.png` là ảnh bạn muốn công khai — bản hiện tại render qua `tools/demo-page.html` (số dư, chi phí console, tên phiên đã thay bằng dữ liệu mẫu); chụp lại thì dùng lại trang đó thay vì dữ liệu thật.
 - [ ] `node server.mjs` vẫn chạy được từ thư mục này

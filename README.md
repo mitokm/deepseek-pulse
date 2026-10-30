@@ -288,7 +288,16 @@ USD / 1M token. Công thức: `(cacheRead × hit + (input + cacheWrite) × miss 
 
 ```powershell
 node tools/preview.mjs 1440 2400 docs/preview.png
-$env:PULSE_URL = "http://127.0.0.1:19387/pulse/?embed=1"; node tools/preview.mjs 1280 1400 docs/panel.png
+```
+
+Ảnh trong `docs/` được chụp qua `tools/demo-page.html` — trang này lấy dữ liệu thật nhưng **thay số dư, chi phí console và tên phiên bằng giá trị mẫu**, nên ảnh công khai không lộ tài khoản:
+
+```powershell
+Copy-Item .\tools\demo-page.html .\public\_demo.html
+$env:PULSE_URL = "http://127.0.0.1:4577/_demo.html"
+$env:CLIP = "0,0,1440,1520"; node tools/preview.mjs 1440 900 docs/screenshot.png
+$env:CLIP = "0,0,1100,1120"; node tools/preview.mjs 1100 900 docs/panel.png
+Remove-Item .\public\_demo.html
 ```
 
 `tools/` không nằm trong gói plugin (`files` chỉ gồm `lib`, `public`, `config.json`, `cordis.patch.yml`).
