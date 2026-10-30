@@ -435,8 +435,36 @@ function renderBalance(data) {
   // The host keeps the alert threshold in pulse-alert.json (shared with email);
   // localStorage mirrors it so the dock can notify before the next host reload.
   const serverStep = Number(state.alerts?.dropAmount);
-  const stepValue = (Number.isFinite(serverStep) && serverStep > 0 ? serverStep : readBalanceStep()).toFixed(2);
-  const alertsHint = state.alerts?.configured ? 'email đang bật' : 'tối thiểu $0.10';
+  const step = Number.isFinite(serverStep) && serverStep > 0 ? serverStep : readBalanceStep();
+  const stepValue = step.toFixed(2);
+
+  const permission = (() => {
+    try {
+      return typeof Notification === 'undefined' ? 'none' : Notification.permission;
+    } catch {
+      return 'none';
+    }
+  })();
+  const permissionText =
+    permission === 'granted'
+      ? 'thông báo bật'
+      : permission === 'denied'
+        ? 'đã chặn thông báo'
+        : permission === 'none'
+          ? 'không hỗ trợ thông báo'
+          : 'chưa cấp quyền';
+  const alertsHint = `${permissionText}${state.alerts?.configured ? ' · email bật' : ''}`;
+
+  const baseline = readBalanceBaseline();
+  const rawDrop = baseline === null ? 0 : baseline - total;
+  const dropSoFar = Math.max(0, Math.round(rawDrop * 100) / 100);
+  const remaining = Math.max(0, Math.round((step - dropSoFar) * 100) / 100);
+  const progressText =
+    baseline === null
+      ? 'mốc sẽ đặt ở lần lấy số dư đầu tiên'
+      : remaining <= 0
+        ? `đã giảm ${money(dropSoFar, 2)} — báo ở lần cập nhật sau`
+        : `đã giảm ${money(dropSoFar, 2)} · còn ${money(remaining, 2)} nữa để báo`;
 
   return `
     <section class="card span-4">
@@ -481,6 +509,7 @@ function renderBalance(data) {
           <button type="button" data-action="test-balance-alert">Thử thông báo</button>
           <span class="alert-hint" data-alert-hint>${esc(alertsHint)}</span>
         </div>
+        <div class="alert-progress" data-alert-progress>${esc(progressText)}</div>
       </div>
     </section>`;
 }
@@ -905,11 +934,26 @@ document.addEventListener('click', (event) => {
       const step = readBalanceStep();
       const total = state.data?.balance?.total ?? 0;
       const sent = fireBalanceNotification(step, total, step);
-      if (hint) {
-        hint.textContent = sent ? 'đã gửi thử' : 'trình duyệt chưa cho phép';
-        hint.title = sent ? '' : 'Bấm ổ khoá trên thanh địa chỉ → Notifications → Allow';
+      if (!hint) return;
+      if (sent) {
+        hint.textContent = 'đã gửi thử';
+        hint.dataset.state = 'ok';
+        return;
       }
-    }, 500);
+      let permission = 'none';
+      try {
+        permission = typeof Notification === 'undefined' ? 'none' : Notification.permission;
+      } catch {
+        permission = 'none';
+      }
+      hint.textContent =
+        permission === 'denied'
+          ? 'đã chặn — bấm ổ khoá để mở'
+          : permission === 'none'
+            ? 'ứng dụng không hỗ trợ thông báo'
+            : 'chưa cấp quyền';
+      hint.dataset.state = 'warn';
+    }, 600);
   }
 });
 

@@ -213,6 +213,7 @@ body {
 .alert-hint { font-size: 10.5px; color: var(--faint); }
 .alert-hint[data-state='ok'] { color: var(--off); }
 .alert-hint[data-state='warn'] { color: var(--peak); }
+.alert-progress { margin-top: 4px; font-size: 10.5px; color: var(--faint); font-variant-numeric: tabular-nums; }
 
 /* ------------------------------------------------------------ peak clock */
 
