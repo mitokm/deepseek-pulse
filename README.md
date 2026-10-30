@@ -281,6 +281,7 @@ USD / 1M token. Công thức: `(cacheRead × hit + (input + cacheWrite) × miss 
 | Báo "Phiên đăng nhập đã hết hiệu lực" | Đăng xuất/đăng nhập lại trong DSH. |
 | Bảng trống, 0 phiên | Kiểm tra `%USERPROFILE%\.dsh\sessions`; hoặc đặt `DSH_HOME` nếu DSH dùng thư mục khác. |
 | Lỗi `zstd` khi chạy độc lập | Dùng Node ≥ 24 (`start.cmd`). |
+| Có thẻ trong app nhưng **không có toast Windows** | Windows đang tắt thông báo. Kiểm tra `HKCU\Software\Microsoft\Windows\CurrentVersion\PushNotifications\ToastEnabled` = 1 (Settings → System → Notifications), và tắt Focus Assist (`Win+N`). Sau khi bật, mở lại app để Windows đăng ký nó vào danh sách app được thông báo. |
 
 ## Công cụ dev
 
